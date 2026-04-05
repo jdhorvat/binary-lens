@@ -1,0 +1,29 @@
+# Build output
+bin/
+obj/
+publish/
+
+# NuGet
+*.nupkg
+.nuget/
+
+# IDE
+.vs/
+*.user
+*.suo
+*.DotSettings.user
+.idea/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Output / test data
+output results/
+
+# Reference projects (large, third-party)
+reference projects/
+
+# Claude working files
+CLAUDE.md
