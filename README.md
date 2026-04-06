@@ -4,6 +4,8 @@ A Windows desktop tool for analyzing binary files. Drop in a PE executable, DLL,
 
 Built with .NET 9, WPF, and C#. Single-window, tree-navigated UI — no tab strip clutter.
 
+![Binary Lens Screenshot](screenshot.png)
+
 ## Supported Formats
 
 - **PE files** (EXE, DLL, SYS, OCX) — headers, sections, imports, exports, resources, entropy
