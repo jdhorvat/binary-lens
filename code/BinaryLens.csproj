@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>BinaryLens</RootNamespace>
+    <AssemblyName>BinaryLens</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Version>1.0.0</Version>
+    <Company>BinaryLens</Company>
+    <Product>BinaryLens Binary Analysis Workbench</Product>
+  </PropertyGroup>
+
+  <!-- Exclude reference projects, output folders, and test data from compilation -->
+  <ItemGroup>
+    <Compile Remove="reference projects\**" />
+    <Compile Remove="output results\**" />
+    <Compile Remove="publish\**" />
+    <None Remove="reference projects\**" />
+    <Content Remove="reference projects\**" />
+    <EmbeddedResource Remove="reference projects\**" />
+    <Page Remove="reference projects\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- PE parsing: headers, sections, imports, exports, resources -->
+    <PackageReference Include="PeNet" Version="4.0.0" />
+
+    <!-- .NET assembly decompilation to C# source -->
+    <PackageReference Include="ICSharpCode.Decompiler" Version="8.2.0.7535" />
+
+    <!-- Native x86/x64 disassembly via Capstone engine -->
+    <PackageReference Include="Gee.External.Capstone" Version="2.3.0" />
+  </ItemGroup>
+
+</Project>

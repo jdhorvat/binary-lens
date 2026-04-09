@@ -4,8 +4,6 @@ A Windows desktop tool for analyzing binary files. Drop in a PE executable, DLL,
 
 Built with .NET 9, WPF, and C#. Single-window, tree-navigated UI — no tab strip clutter.
 
-![Binary Lens Screenshot](screenshot.png)
-
 ## Supported Formats
 
 - **PE files** (EXE, DLL, SYS, OCX) — headers, sections, imports, exports, resources, entropy
@@ -96,15 +94,15 @@ BinaryLens/
 
 ## Acknowledgments
 
-The VLX/FAS decompiler was built with significant help from several open-source reference projects that document the FAS bytecode format. These projects were studied for opcode definitions, stream architecture, and decryption approaches:
+The VLX/FAS decompiler was built with significant help from several community reference projects that have approached the FAS bytecode format. These projects were compared:
 
 - **Fas-Disasm** by cw2k — VB6 FAS/FSL disassembler (versions 0.4–0.11, 2005–2018). Primary reference for opcode tables, two-stream architecture (resource + function streams), and the FAS file format. Includes the only known public [FAS format specification](http://files.planet-dl.org/cw2k/Fas%20AutoLisp-Decompiler/fas-format.htm). [GitHub](https://github.com/cw2k/Fas-Disasm)
 - **FAS-Decompiler** — C#/WPF FAS decompiler covering FAS2/3/4 signature detection and stack-based decryption
-- **fasd** (v0.59) — FAS disassembler, referenced for opcode behavior
+- **fasd** (v0.59) — FAS disassembler
 - **UnLISP** (v2.1) — AutoCAD LSP decryptor
 - **FSL-DeCrypt** (v0.9.28) — FSL file decryption reference
-- **VLX2FAS** (v1.1) — VLX-to-FAS converter, referenced for VLX container structure
-- **vllib.dll analysis** — Autodesk VisualLISP runtime, studied for internal opcode semantics
+- **VLX2FAS** (v1.1) — VLX-to-FAS converter
+- **vllib.dll analysis**
 
 The VB5/6 analyzer was informed by:
 
