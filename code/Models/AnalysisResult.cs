@@ -340,6 +340,7 @@ public class VlxEmbeddedFile
     public int    Offset        { get; set; }
     public int    Size          { get; set; }
     public string Content       { get; set; } = "";
+    public byte[]? RawData      { get; set; }
     public string OffsetDisplay => $"0x{Offset:X6}";
     public string SizeDisplay   => $"{Size:N0} bytes";
 }

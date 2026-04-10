@@ -3102,12 +3102,20 @@ public static class VlxAnalyzer
                         content += "\n; [truncated at 8192 chars]";
                 }
 
+                byte[]? rawBytes = null;
+                if (dataLen > 0 && dataStart + dataLen <= data.Length)
+                {
+                    rawBytes = new byte[dataLen];
+                    Array.Copy(data, dataStart, rawBytes, 0, dataLen);
+                }
+
                 info.EmbeddedFiles.Add(new VlxEmbeddedFile
                 {
                     FileType = typeLabel + (string.IsNullOrEmpty(resName) ? "" : $" ({resName})"),
                     Offset   = dataStart,
                     Size     = dataLen,
                     Content  = content,
+                    RawData  = rawBytes,
                 });
             }
 
@@ -3119,12 +3127,20 @@ public static class VlxAnalyzer
                     prvContent = Encoding.ASCII.GetString(data, dataStart,
                         Math.Min(dataLen, 4096)).TrimEnd('\0');
                 }
+                byte[]? prvRaw = null;
+                if (dataLen > 0 && dataStart + dataLen <= data.Length)
+                {
+                    prvRaw = new byte[dataLen];
+                    Array.Copy(data, dataStart, prvRaw, 0, dataLen);
+                }
+
                 info.EmbeddedFiles.Add(new VlxEmbeddedFile
                 {
                     FileType = $"PRV (private data{(string.IsNullOrEmpty(resName) ? "" : $": {resName}")})",
                     Offset   = dataStart,
                     Size     = dataLen,
                     Content  = string.IsNullOrWhiteSpace(prvContent) ? $"[binary data: {dataLen:N0} bytes]" : prvContent,
+                    RawData  = prvRaw,
                 });
             }
 
@@ -3234,12 +3250,16 @@ public static class VlxAnalyzer
             if (text.Contains('{') || text.Contains("action")
              || text.Contains("tile") || text.Contains("button"))
             {
+                byte[] dclRaw = new byte[blockLen];
+                Array.Copy(data, blockStart, dclRaw, 0, blockLen);
+
                 var dcl = new VlxEmbeddedFile
                 {
                     FileType = "DCL (Dialog Definition)",
                     Offset   = blockStart,
                     Size     = blockLen,
                     Content  = text.Length > 4096 ? text[..4096] + "\n; [truncated]" : text,
+                    RawData  = dclRaw,
                 };
                 info.EmbeddedFiles.Add(dcl);
                 i = blockEnd;   // skip past this block
@@ -3278,12 +3298,16 @@ public static class VlxAnalyzer
                             f.Offset <= runStart && f.Offset + f.Size >= runStart + runLen);
                         if (!alreadyCaptured)
                         {
+                            byte[] txtRaw = new byte[runLen];
+                            Array.Copy(data, runStart, txtRaw, 0, runLen);
+
                             info.EmbeddedFiles.Add(new VlxEmbeddedFile
                             {
                                 FileType = "TXT (embedded text)",
                                 Offset   = runStart,
                                 Size     = runLen,
                                 Content  = text.Length > 2048 ? text[..2048] + "\n[truncated]" : text,
+                                RawData  = txtRaw,
                             });
                         }
                     }

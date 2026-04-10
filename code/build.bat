@@ -51,6 +51,16 @@ dotnet publish BinaryLens.csproj -c Release -r win-x64 ^
     -o publish\
 if errorlevel 1 ( echo PUBLISH FAILED & pause & exit /b 1 )
 
+:: Clean satellite assembly language folders (de, fr, ja, etc.)
+echo.
+echo [Cleanup] Removing satellite language folders...
+for /d %%D in (publish\*) do (
+    if exist "%%D\*.resources.dll" (
+        echo   Removing %%D
+        rd /s /q "%%D"
+    )
+)
+
 echo.
 echo ============================================================
 echo  Done.  Output: publish\BinaryLens.exe

@@ -152,6 +152,7 @@ public partial class MainWindow : Window
         MenuExportJson.IsEnabled = true;
         MenuExportCsv.IsEnabled  = true;
         MenuSaveSource.IsEnabled = r.DecompiledSource != null || r.Disassembly.Count > 0;
+        MenuExtractAll.IsEnabled = r.IsVlx || r.IsValidPe;
     }
 
     private void UpdateTabVisibility(AnalysisResult r)
@@ -780,6 +781,24 @@ public partial class MainWindow : Window
         GridVlxGlobals.ItemsSource = vlx.GlobalVars;
         VlxStringsHeader.Text      = $"ALL EXTRACTED STRINGS ({vlx.RawStrings.Count})";
         GridVlxStrings.ItemsSource = vlx.RawStrings;
+
+        // ── Embedded files ───────────────────────────────────────────────────
+        if (vlx.EmbeddedFiles.Count > 0)
+        {
+            VlxEmbeddedHeader.Text       = $"EMBEDDED FILES ({vlx.EmbeddedFiles.Count})";
+            VlxEmbeddedHeader.Visibility = Visibility.Visible;
+            GridVlxEmbedded.ItemsSource  = vlx.EmbeddedFiles;
+            GridVlxEmbedded.Visibility   = Visibility.Visible;
+            VlxEmbeddedButtons.Visibility = Visibility.Visible;
+
+            // Show first embedded file content preview in the RichTextBox
+            var firstText = vlx.EmbeddedFiles.FirstOrDefault(f => !string.IsNullOrEmpty(f.Content));
+            if (firstText != null)
+            {
+                SetRichText(VlxEmbeddedBox, firstText.Content);
+                VlxEmbeddedBox.Visibility = Visibility.Visible;
+            }
+        }
 
         // ── Source tab ────────────────────────────────────────────────────────
         bool hasLisp = !string.IsNullOrEmpty(vlx.DecompiledLisp);
@@ -1674,6 +1693,269 @@ public partial class MainWindow : Window
         }
     }
 
+    // ── Extract All — dumps every extractable output to a folder ───────────────
+
+    private void ExtractAll_Click(object sender, RoutedEventArgs e)
+    {
+        if (_result == null) return;
+
+        var folderDlg = new OpenFolderDialog
+        {
+            Title = "Select Destination Folder for Extracted Files",
+        };
+        if (folderDlg.ShowDialog() != true) return;
+
+        string folder   = folderDlg.FolderName;
+        string baseName = Path.GetFileNameWithoutExtension(_result.FileName);
+        int saved = 0;
+
+        try
+        {
+            // ── VLX/FAS outputs ──────────────────────────────────────────
+            var vlx = _result.VlxInfo;
+            if (vlx != null)
+            {
+                // Embedded files (DCL, TXT, LSP, DVB, PRV)
+                foreach (var ef in vlx.EmbeddedFiles)
+                {
+                    string ext = GetEmbeddedFileExtension(ef.FileType);
+                    string safeName = SanitizeFileName(ef.FileType) + ext;
+                    string path = Path.Combine(folder, safeName);
+                    path = GetUniqueFilePath(path);
+
+                    if (ef.RawData != null && ef.RawData.Length > 0)
+                    {
+                        File.WriteAllBytes(path, ef.RawData);
+                        saved++;
+                    }
+                    else if (!string.IsNullOrEmpty(ef.Content))
+                    {
+                        File.WriteAllText(path, ef.Content, System.Text.Encoding.UTF8);
+                        saved++;
+                    }
+                }
+
+                // Disassembly — per-module if available, else top-level
+                bool savedModuleDisasm = false;
+                foreach (var mod in vlx.Modules)
+                {
+                    if (!string.IsNullOrEmpty(mod.Disassembly))
+                    {
+                        string safeName = SanitizeFileName(mod.Name);
+                        string path = Path.Combine(folder, safeName + "_disasm.txt");
+                        File.WriteAllText(path, mod.Disassembly, System.Text.Encoding.UTF8);
+                        saved++;
+                        savedModuleDisasm = true;
+                    }
+                }
+                if (!savedModuleDisasm && !string.IsNullOrEmpty(vlx.Disassembly))
+                {
+                    File.WriteAllText(Path.Combine(folder, baseName + "_disasm.txt"),
+                        vlx.Disassembly, System.Text.Encoding.UTF8);
+                    saved++;
+                }
+
+                // Decompiled LISP — per-module if available, else top-level
+                bool savedModuleLisp = false;
+                foreach (var mod in vlx.Modules)
+                {
+                    if (!string.IsNullOrEmpty(mod.DecompiledLisp))
+                    {
+                        string safeName = SanitizeFileName(mod.Name);
+                        string path = Path.Combine(folder, safeName + "_decompiled.lsp");
+                        File.WriteAllText(path, mod.DecompiledLisp, System.Text.Encoding.UTF8);
+                        saved++;
+                        savedModuleLisp = true;
+                    }
+                }
+                if (!savedModuleLisp && !string.IsNullOrEmpty(vlx.DecompiledLisp))
+                {
+                    File.WriteAllText(Path.Combine(folder, baseName + "_decompiled.lsp"),
+                        vlx.DecompiledLisp, System.Text.Encoding.UTF8);
+                    saved++;
+                }
+
+                // String table
+                if (vlx.RawStrings.Count > 0)
+                {
+                    var sb = new System.Text.StringBuilder();
+                    foreach (var s in vlx.RawStrings)
+                        sb.AppendLine($"{s.OffsetDisplay}\t{s.Method}\t{s.Value}");
+                    File.WriteAllText(Path.Combine(folder, baseName + "_strings.txt"),
+                        sb.ToString(), System.Text.Encoding.UTF8);
+                    saved++;
+                }
+            }
+
+            // ── PE resources ─────────────────────────────────────────────
+            if (_result.IsValidPe && _result.Resources.Count > 0)
+            {
+                string resFolder = Path.Combine(folder, baseName + "_resources");
+                Directory.CreateDirectory(resFolder);
+
+                foreach (var res in _result.Resources)
+                {
+                    if (res.Data == null || res.Data.Length == 0) continue;
+
+                    string ext = GetResourceExtension(res.Type);
+                    string name = SanitizeFileName(
+                        string.IsNullOrEmpty(res.Name) ? res.Type : res.Name);
+                    string path = GetUniqueFilePath(Path.Combine(resFolder, name + ext));
+                    File.WriteAllBytes(path, res.Data);
+                    saved++;
+                }
+            }
+
+            ShowStatus($"Extracted {saved} file(s) to {folder}");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Extract failed: {ex.Message}", "BinaryLens",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // ── Extract single embedded file from VLX DataGrid ───────────────────────
+
+    private void ExtractEmbeddedFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridVlxEmbedded.SelectedItem is not VlxEmbeddedFile ef)
+        {
+            MessageBox.Show("Select an embedded file from the grid first.", "BinaryLens",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        string ext = GetEmbeddedFileExtension(ef.FileType);
+        string defaultName = SanitizeFileName(ef.FileType) + ext;
+
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Title    = "Extract Embedded File",
+            FileName = defaultName,
+            Filter   = $"*{ext} files|*{ext}|All files|*.*",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            if (ef.RawData != null && ef.RawData.Length > 0)
+                File.WriteAllBytes(dlg.FileName, ef.RawData);
+            else if (!string.IsNullOrEmpty(ef.Content))
+                File.WriteAllText(dlg.FileName, ef.Content, System.Text.Encoding.UTF8);
+            else
+            {
+                MessageBox.Show("No data available for this embedded file.", "BinaryLens",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            ShowStatus($"Extracted: {Path.GetFileName(dlg.FileName)}");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Extract failed: {ex.Message}", "BinaryLens",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // ── Extract all embedded files (VLX tab button) ──────────────────────────
+
+    private void ExtractAllEmbedded_Click(object sender, RoutedEventArgs e)
+    {
+        var vlx = _result?.VlxInfo;
+        if (vlx == null || vlx.EmbeddedFiles.Count == 0) return;
+
+        var folderDlg = new OpenFolderDialog
+        {
+            Title = "Select Destination Folder for Embedded Files",
+        };
+        if (folderDlg.ShowDialog() != true) return;
+
+        string folder = folderDlg.FolderName;
+        int saved = 0;
+
+        try
+        {
+            foreach (var ef in vlx.EmbeddedFiles)
+            {
+                string ext = GetEmbeddedFileExtension(ef.FileType);
+                string safeName = SanitizeFileName(ef.FileType) + ext;
+                string path = GetUniqueFilePath(Path.Combine(folder, safeName));
+
+                if (ef.RawData != null && ef.RawData.Length > 0)
+                {
+                    File.WriteAllBytes(path, ef.RawData);
+                    saved++;
+                }
+                else if (!string.IsNullOrEmpty(ef.Content))
+                {
+                    File.WriteAllText(path, ef.Content, System.Text.Encoding.UTF8);
+                    saved++;
+                }
+            }
+
+            ShowStatus($"Extracted {saved} embedded file(s) to {folder}");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Extract failed: {ex.Message}", "BinaryLens",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // ── Helpers for extraction ───────────────────────────────────────────────
+
+    private static string GetEmbeddedFileExtension(string fileType)
+    {
+        string ft = fileType.ToUpperInvariant();
+        if (ft.Contains("DCL"))  return ".dcl";
+        if (ft.Contains("TXT"))  return ".txt";
+        if (ft.Contains("LSP"))  return ".lsp";
+        if (ft.Contains("DVB"))  return ".dvb";
+        if (ft.Contains("PRV"))  return ".prv";
+        if (ft.Contains("FAS"))  return ".fas";
+        return ".bin";
+    }
+
+    private static string GetResourceExtension(string resourceType)
+    {
+        string rt = resourceType.ToUpperInvariant();
+        if (rt.Contains("ICON"))    return ".ico";
+        if (rt.Contains("BITMAP"))  return ".bmp";
+        if (rt.Contains("CURSOR"))  return ".cur";
+        if (rt.Contains("MANIFEST"))return ".manifest";
+        if (rt.Contains("VERSION")) return ".bin";
+        if (rt.Contains("STRING"))  return ".txt";
+        if (rt.Contains("DIALOG"))  return ".bin";
+        return ".bin";
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        // Strip parenthetical annotations like " (Dialog Definition)" and clean invalid chars
+        int paren = name.IndexOf('(');
+        if (paren > 0) name = name[..paren];
+        name = name.Trim();
+        return string.Join("_", name.Split(Path.GetInvalidFileNameChars()))
+                     .Replace(" ", "_")
+                     .TrimEnd('_');
+    }
+
+    private static string GetUniqueFilePath(string path)
+    {
+        if (!File.Exists(path)) return path;
+        string dir  = Path.GetDirectoryName(path) ?? ".";
+        string name = Path.GetFileNameWithoutExtension(path);
+        string ext  = Path.GetExtension(path);
+        int n = 2;
+        while (File.Exists(path))
+        {
+            path = Path.Combine(dir, $"{name}_{n}{ext}");
+            n++;
+        }
+        return path;
+    }
+
     private void CopySource_Click(object sender, RoutedEventArgs e)
     {
         // Multi-module mode: copy the currently selected module tab content
@@ -1805,10 +2087,17 @@ public partial class MainWindow : Window
         GridVlxFunctions.ItemsSource = null;
         GridVlxGlobals.ItemsSource   = null;
         GridVlxStrings.ItemsSource   = null;
+        GridVlxEmbedded.ItemsSource  = null;
+        GridVlxEmbedded.Visibility   = Visibility.Collapsed;
+        VlxEmbeddedHeader.Visibility = Visibility.Collapsed;
+        VlxEmbeddedButtons.Visibility = Visibility.Collapsed;
+        VlxEmbeddedBox.Document.Blocks.Clear();
+        VlxEmbeddedBox.Visibility    = Visibility.Collapsed;
         VlxDetails.Visibility        = Visibility.Collapsed;
         NoVlxMsg.Visibility          = Visibility.Collapsed;
         BtnSaveAll.Visibility        = Visibility.Collapsed;
         BtnSaveAll.IsEnabled         = false;
+        MenuExtractAll.IsEnabled     = false;
 
         FileSummaryPanel.Visibility = Visibility.Collapsed;
         MenuExportHtml.IsEnabled    = false;

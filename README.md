@@ -94,22 +94,9 @@ BinaryLens/
 
 ## Acknowledgments
 
-The VLX/FAS decompiler was built with significant help from several community reference projects that have approached the FAS bytecode format. These projects were compared:
+The VLX/FAS analyzer builds on publicly available format documentation from the AutoCAD community, including cw2k's [FAS format specification](http://files.planet-dl.org/cw2k/Fas%20AutoLisp-Decompiler/fas-format.htm).
 
-- **Fas-Disasm** by cw2k — VB6 FAS/FSL disassembler (versions 0.4–0.11, 2005–2018). Primary reference for opcode tables, two-stream architecture (resource + function streams), and the FAS file format. Includes the only known public [FAS format specification](http://files.planet-dl.org/cw2k/Fas%20AutoLisp-Decompiler/fas-format.htm). [GitHub](https://github.com/cw2k/Fas-Disasm)
-- **FAS-Decompiler** — C#/WPF FAS decompiler covering FAS2/3/4 signature detection and stack-based decryption
-- **fasd** (v0.59) — FAS disassembler
-- **UnLISP** (v2.1) — AutoCAD LSP decryptor
-- **FSL-DeCrypt** (v0.9.28) — FSL file decryption reference
-- **VLX2FAS** (v1.1) — VLX-to-FAS converter
-- **vllib.dll analysis**
-
-The VB5/6 analyzer was informed by:
-
-- **exdec** by josephCo/MEX/C4N — VB P-Code disassembler
-- **VBDE** (v0.85) by iorior — VB6 decompiler/source recovery tool
-- Additional VB5/6 binary format references (vb56b1–b4, vb6idc)
-- Gen Digital's research on [binary data hiding in VB6 executables](https://www.gendigital.com/blog/insights/research/binary-data-hiding-in-vb6-executables)
+The VB5/6 analyzer draws on published binary format research, including Gen Digital's work on [VB6 executable structure](https://www.gendigital.com/blog/insights/research/binary-data-hiding-in-vb6-executables).
 
 ## License
 

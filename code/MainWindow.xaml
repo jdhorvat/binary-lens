@@ -31,6 +31,9 @@
                     <Separator/>
                     <MenuItem Header="Save _Source / Disasm…" Click="MenuSaveSource_Click"
                               x:Name="MenuSaveSource"  IsEnabled="False"/>
+                    <Separator/>
+                    <MenuItem Header="Extract _All…"         Click="ExtractAll_Click"
+                              x:Name="MenuExtractAll"  IsEnabled="False"/>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="_Compare Two Binaries…"     Click="MenuCompare_Click"
@@ -816,11 +819,29 @@
                                     </DataGrid.Columns>
                                 </DataGrid>
 
-                                <!-- Embedded DCL/TXT files -->
+                                <!-- Embedded DCL/TXT/LSP/DVB/PRV files -->
                                 <TextBlock x:Name="VlxEmbeddedHeader"
                                            Style="{StaticResource SectionHeader}"
                                            Margin="0,16,0,6"
                                            Visibility="Collapsed"/>
+                                <DataGrid x:Name="GridVlxEmbedded"
+                                          AutoGenerateColumns="False"
+                                          Margin="0,0,0,8" MaxHeight="200" ColumnWidth="Auto"
+                                          SelectionMode="Single"
+                                          Visibility="Collapsed">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Type"   Binding="{Binding FileType}"      Width="*"/>
+                                        <DataGridTextColumn Header="Offset" Binding="{Binding OffsetDisplay}" Width="90"/>
+                                        <DataGridTextColumn Header="Size"   Binding="{Binding SizeDisplay}"   Width="100"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8"
+                                            x:Name="VlxEmbeddedButtons" Visibility="Collapsed">
+                                    <Button Content="Extract Selected…" Click="ExtractEmbeddedFile_Click"
+                                            Margin="0,0,8,0" Padding="12,4"/>
+                                    <Button Content="Extract All Embedded…" Click="ExtractAllEmbedded_Click"
+                                            Padding="12,4"/>
+                                </StackPanel>
                                 <RichTextBox x:Name="VlxEmbeddedBox"
                                              FontFamily="Consolas" FontSize="11"
                                              IsReadOnly="True" MaxHeight="300"
